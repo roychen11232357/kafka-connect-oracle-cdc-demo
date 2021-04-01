@@ -6,8 +6,9 @@
 - Debezium Connector for Oracle 1.5
 
 ## Usage
-- run ./setup.sh
+- Just one command `./setup.sh` can start all things done!
 - You can use akhq which launched by docker-compose to browse or manipulate kafka data
+- try insert/update/delete DML, you can see that data writen into specified topic
 
 ## Issues
 - Source data will take a lot of time (about 30 seconds) to write to the topic
