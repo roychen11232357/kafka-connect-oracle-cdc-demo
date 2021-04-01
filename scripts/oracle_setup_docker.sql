@@ -1,0 +1,96 @@
+prompt Starting Setup
+
+prompt Check if the ORACLE database is in archive log mode
+select log_mode from v$database;
+
+
+alter system set db_recovery_file_dest_size = 15G;
+alter system set db_recovery_file_dest = '/u01/app/oracle/oradata/recovery_area' scope=spfile;
+
+prompt Turn on ARCHIVELOG mode
+SHUTDOWN IMMEDIATE;
+STARTUP MOUNT;
+ALTER DATABASE ARCHIVELOG;
+ALTER DATABASE OPEN;
+
+prompt Check if the ORACLE database is in archive log mode
+select log_mode from v$database;
+
+prompt Enable supplemental logging for all columns
+ALTER DATABASE ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
+
+CREATE TABLESPACE logminer_tbs DATAFILE '/u01/app/oracle/oradata/XE/logminer_tbs.dbf' SIZE 500M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+
+CREATE ROLE CDC_PRIVS;
+GRANT CREATE SESSION,
+  EXECUTE_CATALOG_ROLE,
+  SELECT ANY TRANSACTION,
+  SELECT ANY DICTIONARY,
+  SELECT ANY TABLE
+  TO CDC_PRIVS;
+GRANT SELECT ON SYSTEM.LOGMNR_COL$ TO CDC_PRIVS;
+GRANT SELECT ON SYSTEM.LOGMNR_OBJ$ TO CDC_PRIVS;
+GRANT SELECT ON SYSTEM.LOGMNR_USER$ TO CDC_PRIVS;
+GRANT SELECT ON SYSTEM.LOGMNR_UID$ TO CDC_PRIVS;
+
+CREATE USER myuser IDENTIFIED BY password DEFAULT TABLESPACE logminer_tbs;
+GRANT CDC_PRIVS TO myuser;
+ALTER USER myuser QUOTA UNLIMITED ON logminer_tbs;
+
+GRANT CREATE SESSION TO myuser;
+GRANT CREATE TABLE TO myuser;
+GRANT CREATE SEQUENCE TO myuser;
+GRANT CREATE TRIGGER TO myuser;
+
+
+GRANT CREATE SESSION TO myuser;
+GRANT SELECT ON V_$DATABASE to myuser;
+GRANT FLASHBACK ANY TABLE TO myuser;
+GRANT SELECT ANY TABLE TO myuser;
+GRANT SELECT_CATALOG_ROLE TO myuser;
+GRANT EXECUTE_CATALOG_ROLE TO myuser;
+GRANT SELECT ANY TRANSACTION TO myuser;
+
+GRANT CREATE TABLE TO myuser;
+GRANT LOCK ANY TABLE TO myuser;
+GRANT ALTER ANY TABLE TO myuser;
+GRANT CREATE SEQUENCE TO myuser;
+
+GRANT EXECUTE ON DBMS_LOGMNR TO myuser;
+GRANT EXECUTE ON DBMS_LOGMNR_D TO myuser;
+
+GRANT SELECT ON V_$LOG TO myuser;
+GRANT SELECT ON V_$LOG_HISTORY TO myuser;
+GRANT SELECT ON V_$LOGMNR_LOGS TO myuser;
+GRANT SELECT ON V_$LOGMNR_CONTENTS TO myuser;
+GRANT SELECT ON V_$LOGMNR_PARAMETERS TO myuser;
+GRANT SELECT ON V_$LOGFILE TO myuser;
+GRANT SELECT ON V_$ARCHIVED_LOG TO myuser;
+GRANT SELECT ON V_$ARCHIVE_DEST_STATUS TO myuser;
+
+GRANT SELECT ON SYSTEM.LOGMNR_COL$ TO myuser;
+GRANT SELECT ON SYSTEM.LOGMNR_OBJ$ TO myuser;
+GRANT SELECT ON SYSTEM.LOGMNR_USER$ TO myuser;
+GRANT SELECT ON SYSTEM.LOGMNR_UID$ TO myuser;
+
+ALTER DATABASE ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
+
+GRANT FLASHBACK ANY TABLE TO myuser;
+
+prompt Create some objects
+CREATE TABLE MYUSER.emp
+(
+    i INTEGER,
+    name VARCHAR2(100),
+    PRIMARY KEY (i)
+) tablespace logminer_tbs;
+    
+insert into MYUSER.emp (i,name) values (1,'Bob');
+insert into MYUSER.emp (i,name) values (2,'Jane');
+insert into MYUSER.emp (i,name) values (3,'Mary');
+insert into MYUSER.emp (i,name) values (4,'Alice');
+
+prompt All Done
+
+exit;
+
